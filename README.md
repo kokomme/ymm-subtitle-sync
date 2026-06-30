@@ -1,5 +1,7 @@
 # YmmSubtitleSync — 字幕タイミング調整プラグイン
 
+[![Release](https://img.shields.io/github/v/release/kokomme/ymm-subtitle-sync?label=ダウンロード&style=for-the-badge)](https://github.com/kokomme/ymm-subtitle-sync/releases/latest)
+
 [ゆっくりMovieMaker4 (YMM4)](https://manjubox.net/ymm4/) 向けプラグインです。  
 **ボイスアイテムが話している間だけ字幕を表示**し、話し終わったら字幕を消します。
 
@@ -75,18 +77,29 @@ YMM4 にインストール後、サイドパネルに **「字幕タイミング
 - Windows 10 version 2004 (ビルド 19041) 以降
 - .NET 8.0 以降のランタイム（YMM4 に同梱）
 
-### ビルド手順
+### ダウンロード＆インストール
+
+1. **[最新リリースのページ](https://github.com/kokomme/ymm-subtitle-sync/releases/latest)** を開く
+2. `YmmSubtitleSync.ymme` をダウンロード
+3. `.ymme` ファイルを **YMM4 のウィンドウにドラッグ＆ドロップ**
+4. YMM4 を再起動
+
+### ビルド手順（開発者向け）
 
 ```bash
 # YMM4 の DLL を Libs/ にコピー
-cp "C:\ゆっくりMovieMaker4\YukkuriMovieMaker.Plugin.dll" Libs/
+copy "C:\ゆっくりMovieMaker4\YukkuriMovieMaker.Plugin.dll" Libs\
 
 # ビルド
 dotnet build -c Release -r win-x64 --no-self-contained
 ```
 
-生成された `YmmSubtitleSync.dll` を YMM4 のプラグインフォルダに配置するか、  
-`.ymme` 形式にパッケージして YMM4 にドラッグ＆ドロップしてください。
+`v` から始まるタグを push すると GitHub Actions が自動でビルド＆リリースを作成します。
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ---
 

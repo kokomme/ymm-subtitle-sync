@@ -1,0 +1,55 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        run: dotnet build -c Release -r win-x64 --no-self-contained
+
+      - name: Create .ymme package
+        shell: pwsh
+        run: |
+          $dll = "bin/Release/net10.0-windows10.0.19041.0/win-x64/YmmSubtitleSync.dll"
+          Compress-Archive -Path $dll -DestinationPath "YmmSubtitleSync.zip"
+          Rename-Item "YmmSubtitleSync.zip" "YmmSubtitleSync.ymme"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "字幕タイミング調整 ${{ github.ref_name }}"
+          body: |
+            ## インストール方法
+
+            1. 下の `YmmSubtitleSync.ymme` をダウンロード
+            2. YMM4のウィンドウにドラッグ&ドロップ
+            3. YMM4を再起動
+
+            ## 使い方
+
+            1. YMM4でプロジェクトを保存
+            2. プラグインパネルの「キャラ一覧を更新」を押す
+            3. 字幕を制御したいキャラにチェックを入れる
+            4. 「適用する」を押す
+            5. YMM4でプロジェクトを再読み込み
+          files: YmmSubtitleSync.ymme
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
