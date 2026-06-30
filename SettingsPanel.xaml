@@ -1,0 +1,80 @@
+<UserControl x:Class="YmmSubtitleSync.SettingsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="240">
+
+    <StackPanel Margin="8" VerticalAlignment="Top">
+
+        <TextBlock Text="字幕タイミング調整" FontWeight="Bold" FontSize="13" Margin="0,0,0,10"/>
+
+        <!-- 字幕グループ -->
+        <GroupBox Header="字幕グループ" Padding="6,4,6,8">
+            <StackPanel>
+
+                <TextBlock Text="ボイスが終了したら字幕を消す"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,8"
+                           Foreground="#444"/>
+
+                <!-- 全選択チェックボックス -->
+                <CheckBox Content="すべて選択"
+                          IsChecked="{Binding AllEnabled}"
+                          Margin="0,0,0,4"
+                          FontWeight="SemiBold"/>
+
+                <Separator Margin="0,2,0,6"/>
+
+                <!-- キャラクター一覧 -->
+                <ItemsControl ItemsSource="{Binding Characters}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                      Content="{Binding CharacterName}"
+                                      Margin="4,2,0,2"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 空のときのメッセージ -->
+                <TextBlock Text="（↓ キャラ一覧を更新してください）"
+                           Foreground="#999"
+                           FontSize="11"
+                           Margin="4,4,0,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Characters.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <Button Content="キャラ一覧を更新"
+                        Command="{Binding RefreshCommand}"
+                        Padding="6,3"
+                        Margin="0,10,0,0"
+                        HorizontalAlignment="Stretch"/>
+
+            </StackPanel>
+        </GroupBox>
+
+        <!-- 適用ボタン -->
+        <Button Content="適用する"
+                Command="{Binding ApplyCommand}"
+                Padding="8,5"
+                Margin="0,10,0,0"
+                FontWeight="SemiBold"
+                HorizontalAlignment="Stretch"/>
+
+        <!-- 結果ログ -->
+        <TextBlock Text="{Binding ResultText}"
+                   Margin="0,8,0,0"
+                   TextWrapping="Wrap"
+                   Foreground="#555"
+                   FontSize="11"/>
+
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,14 @@
+# Build outputs
+bin/
+obj/
+
+# Libs (YMM4 DLL は配布不可のためリポジトリに含めない)
+Libs/
+
+# User-specific files
+*.user
+*.suo
+.vs/
+
+# macOS
+.DS_Store
