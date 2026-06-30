@@ -49,49 +49,81 @@ public static class SubtitleSyncCommand
 
         var sb = new System.Text.StringBuilder();
 
-        // ルートレベルのキー一覧
-        if (doc is JsonObject root)
-        {
-            sb.AppendLine("=== ルートキー ===");
-            foreach (var kv in root)
-            {
-                var preview = kv.Value?.ToJsonString() ?? "null";
-                if (preview.Length > 80) preview = preview[..80] + "...";
-                sb.AppendLine($"  {kv.Key}: {preview}");
-            }
-        }
-
-        // 各タイムラインと最初のアイテム
         var timelines = doc["Timelines"]?.AsArray() ?? [];
-        sb.AppendLine($"\n=== Timelines: {timelines.Count} 件 ===");
+        sb.AppendLine($"=== Timelines: {timelines.Count} 件 ===");
+
         foreach (var tl in timelines)
         {
             if (tl is not JsonObject tlObj) continue;
-            var tlKeys = string.Join(", ", tlObj.Select(kv => kv.Key));
-            sb.AppendLine($"\n[Timeline] {tl["Name"]} / keys: {tlKeys}");
+            sb.AppendLine($"\n[Timeline] {tl["Name"]}");
+
+            // VideoInfo から FPS を確認
+            if (tlObj["VideoInfo"] is JsonObject vi)
+            {
+                sb.AppendLine($"  VideoInfo keys: {string.Join(", ", vi.Select(kv => kv.Key))}");
+                foreach (var kv in vi)
+                {
+                    var val = kv.Value?.ToJsonString() ?? "null";
+                    if (val.Length > 80) val = val[..80] + "...";
+                    sb.AppendLine($"    {kv.Key}: {val}");
+                }
+            }
 
             var items = tl["Items"]?.AsArray() ?? [];
             sb.AppendLine($"  Items: {items.Count} 件");
-            foreach (var item in items.Take(2))
-            {
-                if (item is not JsonObject obj) continue;
-                sb.AppendLine($"  --- Item ---");
-                foreach (var kv in obj)
+
+            // $type の種類一覧
+            var types = items
+                .OfType<JsonObject>()
+                .Select(o => o["$type"]?.GetValue<string>() ?? "(no type)")
+                .GroupBy(t => t)
+                .Select(g => $"{g.Key.Split(',')[0].Split('.').Last()} x{g.Count()}");
+            sb.AppendLine($"  Types: {string.Join(", ", types)}");
+
+            // VoiceItem を探して最初の1件を表示
+            var voice = items
+                .OfType<JsonObject>()
+                .FirstOrDefault(o =>
                 {
-                    var val = kv.Value?.ToJsonString() ?? "null";
-                    if (val.Length > 100) val = val[..100] + "...";
-                    sb.AppendLine($"    {kv.Key}: {val}");
+                    var t = o["$type"]?.GetValue<string>() ?? "";
+                    return t.Contains("Voice") || o.ContainsKey("VoiceLength");
+                });
+
+            if (voice != null)
+            {
+                sb.AppendLine("\n  --- 最初の VoiceItem ---");
+                DumpObject(voice, sb, "  ");
+            }
+            else
+            {
+                sb.AppendLine("  ※ VoiceItem が見つかりません");
+                // Voice を含む名前のキーを持つアイテムを探す
+                var candidate = items.OfType<JsonObject>().FirstOrDefault(o =>
+                    o.Any(kv => kv.Key.Contains("Voice", StringComparison.OrdinalIgnoreCase)));
+                if (candidate != null)
+                {
+                    sb.AppendLine("\n  --- Voice関連キーを持つアイテム ---");
+                    DumpObject(candidate, sb, "  ");
                 }
             }
         }
 
-        // ダンプをファイルにも書き出す
         var dumpPath = ymmpPath + ".structure.txt";
         try { File.WriteAllText(dumpPath, sb.ToString()); }
         catch { }
 
         LastDiagLog = sb.ToString();
         return $"ダンプ完了。ファイルも保存しました:\n{dumpPath}\n\n" + sb.ToString();
+    }
+
+    static void DumpObject(JsonObject obj, System.Text.StringBuilder sb, string indent)
+    {
+        foreach (var kv in obj)
+        {
+            var val = kv.Value?.ToJsonString() ?? "null";
+            if (val.Length > 120) val = val[..120] + "...";
+            sb.AppendLine($"{indent}  {kv.Key}: {val}");
+        }
     }
 
     /// <summary>
@@ -294,32 +326,18 @@ public static class SubtitleSyncCommand
 
     static double DetectInternalFps(JsonArray timelines, out string diag)
     {
-        var candidates = new List<double>();
         foreach (var tl in timelines)
         {
+            // 優先1: Timeline.VideoInfo.FPS
+            if (tl?["VideoInfo"] is JsonObject vi)
+            {
+                foreach (var key in new[] { "FPS", "Fps", "FrameRate", "fps" })
+                    if (vi[key]?.GetValue<double>() is double viFps && viFps > 0)
+                    { diag = $"VideoInfo.{key}={viFps}"; return viFps; }
+            }
+            // 優先2: Timeline.FPS
             if (tl?["FPS"]?.GetValue<double>() is double tFps && tFps > 0)
             { diag = $"Timeline.FPS={tFps}"; return tFps; }
-
-            foreach (var item in tl?["Items"]?.AsArray() ?? [])
-            {
-                if (item is not JsonObject obj) continue;
-                int len = obj["Length"]?.GetValue<int>() ?? 0;
-                if (len <= 0) continue;
-                if (obj["VoiceLength"]?.GetValue<string>() is not string vlStr) continue;
-                if (!TimeSpan.TryParse(vlStr, out var vl) || vl.TotalSeconds <= 0) continue;
-                double add = obj["AdditionalTime"]?.GetValue<double>() ?? 0.0;
-                double total = vl.TotalSeconds + add;
-                if (total <= 0) continue;
-                double implied = len / total;
-                if (implied is >= 20 and <= 300) candidates.Add(implied);
-            }
-        }
-        if (candidates.Count > 0)
-        {
-            double max = candidates.Max();
-            double rounded = Math.Round(max);
-            diag = $"推定={max:F2} → {rounded}";
-            return rounded;
         }
         diag = "検出失敗 → 30fps";
         return 30.0;
