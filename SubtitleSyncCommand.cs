@@ -97,14 +97,20 @@ public static class SubtitleSyncCommand
             else
             {
                 sb.AppendLine("  ※ VoiceItem が見つかりません");
-                // Voice を含む名前のキーを持つアイテムを探す
-                var candidate = items.OfType<JsonObject>().FirstOrDefault(o =>
-                    o.Any(kv => kv.Key.Contains("Voice", StringComparison.OrdinalIgnoreCase)));
-                if (candidate != null)
+            }
+
+            // TextItem も表示
+            var text = items
+                .OfType<JsonObject>()
+                .FirstOrDefault(o =>
                 {
-                    sb.AppendLine("\n  --- Voice関連キーを持つアイテム ---");
-                    DumpObject(candidate, sb, "  ");
-                }
+                    var t = o["$type"]?.GetValue<string>() ?? "";
+                    return t.Contains("Text") && !t.Contains("Voice");
+                });
+            if (text != null)
+            {
+                sb.AppendLine("\n  --- 最初の TextItem ---");
+                DumpObject(text, sb, "  ");
             }
         }
 
@@ -312,15 +318,18 @@ public static class SubtitleSyncCommand
         var vlStr = FindVoiceLength(item);
         if (vlStr != null && TimeSpan.TryParse(vlStr, out var vl) && vl.TotalSeconds > 0)
         {
-            // AdditionalTime は "末尾の余白" であり表情延長に使われるため、字幕には含めない
-            int frames = Math.Max(1, (int)Math.Ceiling(vl.TotalSeconds * fps));
-            diag = $"voice={vl.TotalSeconds:F2}s → {frames}fr";
+            // AdditionalTime が負 = 音声末尾をカット、正 = 末尾に余白追加
+            // 実際に再生される秒数 = VoiceLength + AdditionalTime
+            double addTime = item["AdditionalTime"]?.GetValue<double>() ?? 0.0;
+            double effectiveSec = Math.Max(0.01, vl.TotalSeconds + addTime);
+            int frames = Math.Max(1, (int)Math.Ceiling(effectiveSec * fps));
+            diag = $"voice={vl.TotalSeconds:F3}s add={addTime:F3}s eff={effectiveSec:F3}s → {frames}fr";
             return frames;
         }
         int origLen = item["Length"]?.GetValue<int>() ?? 1;
         diag = vlStr == null
-            ? $"VoiceLengthフィールドなし → origLen={origLen}fr"
-            : $"VoiceLength解析失敗('{vlStr}') → origLen={origLen}fr";
+            ? $"VoiceLengthフィールドなし → {origLen}fr"
+            : $"VoiceLength解析失敗('{vlStr}') → {origLen}fr";
         return origLen;
     }
 
@@ -348,6 +357,9 @@ public static class SubtitleSyncCommand
         foreach (var item in timelines.SelectMany(tl => tl?["Items"]?.AsArray() ?? []))
         {
             if (item is not JsonObject obj || !IsVoiceItem(obj)) continue;
+            // YMM4 実際のフィールド: JimakuVisibility (string enum)
+            if (obj.ContainsKey("JimakuVisibility")) return "JimakuVisibility";
+            // フォールバック: bool フィールド候補
             foreach (var candidate in SubtitleBoolCandidates)
                 if (obj[candidate] is JsonValue v && v.TryGetValue<bool>(out _))
                     return candidate;
@@ -369,15 +381,23 @@ public static class SubtitleSyncCommand
 
     static void DisableBuiltinSubtitle(JsonObject item, string? subtitleField)
     {
+        if (subtitleField == "JimakuVisibility")
+        {
+            item["JimakuVisibility"] = JsonValue.Create("Hidden");
+            return;
+        }
         if (subtitleField != null && item.ContainsKey(subtitleField))
         {
             item[subtitleField] = JsonValue.Create(false);
             return;
         }
-        // フォールバック: 候補を全て試す
-        foreach (var candidate in SubtitleBoolCandidates)
-            if (item.ContainsKey(candidate))
-                item[candidate] = JsonValue.Create(false);
+        // フォールバック: JimakuVisibility が存在すれば Hidden に
+        if (item.ContainsKey("JimakuVisibility"))
+            item["JimakuVisibility"] = JsonValue.Create("Hidden");
+        else
+            foreach (var candidate in SubtitleBoolCandidates)
+                if (item.ContainsKey(candidate))
+                    item[candidate] = JsonValue.Create(false);
     }
 
     static JsonObject BuildTextItem(
