@@ -27,7 +27,11 @@ jobs:
         shell: pwsh
         run: |
           $dll = "bin/Release/net10.0-windows10.0.19041.0/win-x64/YmmSubtitleSync.dll"
-          Compress-Archive -Path $dll -DestinationPath "YmmSubtitleSync.zip"
+          # YMM4 は ZIP 内のフォルダ構造をそのまま user\plugin\ に展開するため
+          # YmmSubtitleSync\YmmSubtitleSync.dll という構造にする必要がある
+          New-Item -ItemType Directory -Force -Path "YmmSubtitleSync"
+          Copy-Item $dll "YmmSubtitleSync\"
+          Compress-Archive -Path "YmmSubtitleSync" -DestinationPath "YmmSubtitleSync.zip"
           Rename-Item "YmmSubtitleSync.zip" "YmmSubtitleSync.ymme"
 
       - name: Create GitHub Release
