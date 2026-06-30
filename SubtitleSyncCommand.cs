@@ -206,19 +206,30 @@ public static class SubtitleSyncCommand
         return "";
     }
 
+    // VoiceLength をトップレベル + 1階層ネストまで探す
+    static string? FindVoiceLength(JsonObject item)
+    {
+        if (item["VoiceLength"]?.GetValue<string>() is string s0) return s0;
+        foreach (var kv in item)
+            if (kv.Value is JsonObject sub && sub["VoiceLength"]?.GetValue<string>() is string s1)
+                return s1;
+        return null;
+    }
+
     static int ComputeAudioFrames(JsonObject item, double fps, out string diag)
     {
-        if (item["VoiceLength"]?.GetValue<string>() is string vlStr &&
-            TimeSpan.TryParse(vlStr, out var vl))
+        var vlStr = FindVoiceLength(item);
+        if (vlStr != null && TimeSpan.TryParse(vlStr, out var vl) && vl.TotalSeconds > 0)
         {
-            double addTime = item["AdditionalTime"]?.GetValue<double>() ?? 0.0;
-            double fullSec = vl.TotalSeconds + addTime;
-            int frames = Math.Max(1, (int)Math.Ceiling(fullSec * fps));
-            diag = $"voice={vl.TotalSeconds:F2}s + add={addTime:F2}s → {frames}fr";
+            // AdditionalTime は "末尾の余白" であり表情延長に使われるため、字幕には含めない
+            int frames = Math.Max(1, (int)Math.Ceiling(vl.TotalSeconds * fps));
+            diag = $"voice={vl.TotalSeconds:F2}s → {frames}fr";
             return frames;
         }
         int origLen = item["Length"]?.GetValue<int>() ?? 1;
-        diag = $"VoiceLength取得失敗 → origLen={origLen}fr";
+        diag = vlStr == null
+            ? $"VoiceLengthフィールドなし → origLen={origLen}fr"
+            : $"VoiceLength解析失敗('{vlStr}') → origLen={origLen}fr";
         return origLen;
     }
 

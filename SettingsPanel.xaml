@@ -76,5 +76,14 @@
                    Foreground="#555"
                    FontSize="11"/>
 
+        <!-- 診断ログボタン -->
+        <Button Content="詳細ログ表示"
+                Command="{Binding ShowLogCommand}"
+                Padding="4,2"
+                Margin="0,4,0,0"
+                HorizontalAlignment="Left"
+                FontSize="10"
+                Foreground="#888"/>
+
     </StackPanel>
 </UserControl>

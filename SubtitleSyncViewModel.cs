@@ -31,6 +31,7 @@ public class SubtitleSyncViewModel : INotifyPropertyChanged
 
     public ICommand RefreshCommand  => new RelayCommand(_ => Refresh());
     public ICommand ApplyCommand    => new RelayCommand(_ => Apply());
+    public ICommand ShowLogCommand  => new RelayCommand(_ => ShowLog());
 
     // ─── 実装 ──────────────────────────────────────────────────────────
 
@@ -98,6 +99,14 @@ public class SubtitleSyncViewModel : INotifyPropertyChanged
         {
             ResultText = $"エラー: {ex.Message}";
         }
+    }
+
+    void ShowLog()
+    {
+        var log = SubtitleSyncCommand.LastDiagLog;
+        ResultText = string.IsNullOrEmpty(log)
+            ? "（まだ処理が実行されていません）"
+            : log;
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
