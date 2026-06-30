@@ -32,6 +32,7 @@ public class SubtitleSyncViewModel : INotifyPropertyChanged
     public ICommand RefreshCommand  => new RelayCommand(_ => Refresh());
     public ICommand ApplyCommand    => new RelayCommand(_ => Apply());
     public ICommand ShowLogCommand  => new RelayCommand(_ => ShowLog());
+    public ICommand DumpCommand     => new RelayCommand(_ => Dump());
 
     // ─── 実装 ──────────────────────────────────────────────────────────
 
@@ -107,6 +108,13 @@ public class SubtitleSyncViewModel : INotifyPropertyChanged
         ResultText = string.IsNullOrEmpty(log)
             ? "（まだ処理が実行されていません）"
             : log;
+    }
+
+    void Dump()
+    {
+        ResultText = "構造解析中...";
+        try { ResultText = SubtitleSyncCommand.DumpStructure(); }
+        catch (Exception ex) { ResultText = $"エラー: {ex.Message}"; }
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)

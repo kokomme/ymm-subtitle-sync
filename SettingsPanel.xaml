@@ -76,14 +76,20 @@
                    Foreground="#555"
                    FontSize="11"/>
 
-        <!-- 診断ログボタン -->
-        <Button Content="詳細ログ表示"
-                Command="{Binding ShowLogCommand}"
-                Padding="4,2"
-                Margin="0,4,0,0"
-                HorizontalAlignment="Left"
-                FontSize="10"
-                Foreground="#888"/>
+        <!-- 診断ボタン群 -->
+        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+            <Button Content="詳細ログ"
+                    Command="{Binding ShowLogCommand}"
+                    Padding="4,2"
+                    Margin="0,0,4,0"
+                    FontSize="10"
+                    Foreground="#888"/>
+            <Button Content="構造ダンプ"
+                    Command="{Binding DumpCommand}"
+                    Padding="4,2"
+                    FontSize="10"
+                    Foreground="#888"/>
+        </StackPanel>
 
     </StackPanel>
 </UserControl>

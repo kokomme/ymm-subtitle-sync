@@ -36,6 +36,65 @@ public static class SubtitleSyncCommand
     // ─── 公開 API ─────────────────────────────────────────────────────
 
     /// <summary>
+    /// .ymmp の構造をダンプして診断用テキストを返す。
+    /// 「構造ダンプ」ボタンから呼ぶ。
+    /// </summary>
+    public static string DumpStructure()
+    {
+        var ymmpPath = ProjectDetector.GetCurrentProjectPath();
+        if (ymmpPath == null) return "プロジェクト未検出";
+
+        var doc = ParseYmmp(ymmpPath);
+        if (doc == null) return "JSONパース失敗";
+
+        var sb = new System.Text.StringBuilder();
+
+        // ルートレベルのキー一覧
+        if (doc is JsonObject root)
+        {
+            sb.AppendLine("=== ルートキー ===");
+            foreach (var kv in root)
+            {
+                var preview = kv.Value?.ToJsonString() ?? "null";
+                if (preview.Length > 80) preview = preview[..80] + "...";
+                sb.AppendLine($"  {kv.Key}: {preview}");
+            }
+        }
+
+        // 各タイムラインと最初のアイテム
+        var timelines = doc["Timelines"]?.AsArray() ?? [];
+        sb.AppendLine($"\n=== Timelines: {timelines.Count} 件 ===");
+        foreach (var tl in timelines)
+        {
+            if (tl is not JsonObject tlObj) continue;
+            var tlKeys = string.Join(", ", tlObj.Select(kv => kv.Key));
+            sb.AppendLine($"\n[Timeline] {tl["Name"]} / keys: {tlKeys}");
+
+            var items = tl["Items"]?.AsArray() ?? [];
+            sb.AppendLine($"  Items: {items.Count} 件");
+            foreach (var item in items.Take(2))
+            {
+                if (item is not JsonObject obj) continue;
+                sb.AppendLine($"  --- Item ---");
+                foreach (var kv in obj)
+                {
+                    var val = kv.Value?.ToJsonString() ?? "null";
+                    if (val.Length > 100) val = val[..100] + "...";
+                    sb.AppendLine($"    {kv.Key}: {val}");
+                }
+            }
+        }
+
+        // ダンプをファイルにも書き出す
+        var dumpPath = ymmpPath + ".structure.txt";
+        try { File.WriteAllText(dumpPath, sb.ToString()); }
+        catch { }
+
+        LastDiagLog = sb.ToString();
+        return $"ダンプ完了。ファイルも保存しました:\n{dumpPath}\n\n" + sb.ToString();
+    }
+
+    /// <summary>
     /// 現在のプロジェクトからキャラクター名一覧を返す。
     /// UI の「キャラ一覧を更新」ボタンから呼ぶ。
     /// </summary>
