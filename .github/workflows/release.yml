@@ -20,6 +20,15 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Verify SDK DLL exists
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "Libs/YukkuriMovieMaker.Plugin.dll")) {
+            Write-Error "Libs/YukkuriMovieMaker.Plugin.dll が見つかりません。YMM4インストール先からコピーしてコミットしてください。"
+            exit 1
+          }
+          Write-Host "SDK DLL confirmed."
+
       - name: Build
         run: dotnet build -c Release -r win-x64 --no-self-contained
 

@@ -2,8 +2,8 @@
 bin/
 obj/
 
-# Libs (YMM4 DLL は配布不可のためリポジトリに含めない)
-Libs/
+# Libs/ の中身は参照用DLLのみ git で管理（Private=false なので出力には含まれない）
+# ただし自分でビルドする際は YMM4 インストール先からコピーが必要
 
 # User-specific files
 *.user
