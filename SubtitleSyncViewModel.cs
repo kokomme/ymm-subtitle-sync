@@ -33,6 +33,7 @@ public class SubtitleSyncViewModel : INotifyPropertyChanged
     public ICommand ApplyCommand    => new RelayCommand(_ => Apply());
     public ICommand ShowLogCommand  => new RelayCommand(_ => ShowLog());
     public ICommand DumpCommand     => new RelayCommand(_ => Dump());
+    public ICommand CopyLogCommand  => new RelayCommand(_ => CopyLog());
 
     // ─── 実装 ──────────────────────────────────────────────────────────
 
@@ -115,6 +116,23 @@ public class SubtitleSyncViewModel : INotifyPropertyChanged
         ResultText = "構造解析中...";
         try { ResultText = SubtitleSyncCommand.DumpStructure(); }
         catch (Exception ex) { ResultText = $"エラー: {ex.Message}"; }
+    }
+
+    void CopyLog()
+    {
+        try
+        {
+            System.Windows.Clipboard.SetText(ResultText);
+            var prev = ResultText;
+            ResultText = "クリップボードにコピーしました。";
+            Task.Delay(1500).ContinueWith(_ =>
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    if (ResultText == "クリップボードにコピーしました。")
+                        ResultText = prev;
+                }));
+        }
+        catch { }
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
